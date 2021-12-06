@@ -1,3 +1,3 @@
 # Mule_Transactions
 
-This is a POC which describes transaction mechanish in Mulesoft
+This is a POC which describes transaction mechanism in Mulesoft
