@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:bti="http://www.mulesoft.org/schema/mule/ee/bti"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/bti http://www.mulesoft.org/schema/mule/ee/bti/current/mule-bti-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<http:listener-config name="HTTP_Listener_config_transacton" doc:name="HTTP Listener config" doc:id="f7022fb5-ec11-4579-87a1-7a522a1455e8" basePath="UK">
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+	<db:config name="Database_Config_Transactions" doc:name="Database Config" doc:id="671916b9-30fc-4c34-b99a-fec44de168a9" >
+		<db:generic-connection url="jdbc:postgresql://localhost:5432/Project_covid" driverClassName="org.postgresql.Driver" user="postgres" password="postgres" transactionIsolation="READ_COMMITTED" useXaTransactions="true"/>
+	</db:config>
+	<bti:transaction-manager doc:name="Bitronix Transaction Manager" doc:id="e2715afb-677c-4768-bc07-14c851e842c7" />
+	<flow name="transaction_pocFlow" doc:id="94552cff-d4b0-488a-bd0d-f6acacf39af4" >
+		<http:listener doc:name="Listener" doc:id="4f022463-1322-4c77-893b-cb8b5b001a82" config-ref="HTTP_Listener_config_transacton" path="/Transaction" allowedMethods="POST"/>
+		<logger level="INFO" doc:name="Logger" doc:id="47b80528-71d6-4eea-b5e5-3ffa760b9b70" message="** Transaction POC Execution**"/>
+		<try doc:name="Try" doc:id="c68853da-15ac-46b1-a70b-12db96d01f9a" transactionalAction="ALWAYS_BEGIN" transactionType="XA">
+			<logger level="INFO" doc:name="Logger" doc:id="cafeade4-db4b-4a14-a3c2-0836a001fc6b" message="**Transaction Started**"/>
+			<db:insert doc:name="DB1_Transcation1" doc:id="845dd3c8-1f08-4cf6-83a2-5890e35d13ca" config-ref="Database_Config_Transactions" target="Transaction1">
+			<db:sql><![CDATA[insert into emp_transaction_table(emp_id, emp_location, emp_designation) values (:emp_id, :emp_location, :emp_designation)]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	emp_id: payload.emp_id,
+	emp_location: payload.emp_location,
+	emp_designation: payload.emp_designation
+}]]]></db:input-parameters>
+		</db:insert>
+			<logger level="INFO" doc:name="Logger" doc:id="6ed3bd05-df94-4572-b977-9e7450fb6dad" message="**Transaction 2 operation**" />
+			<db:insert doc:name="DB2_Transaction2" doc:id="99101bc8-3fdf-48e5-8eff-8643ccb4c0ad" config-ref="Database_Config_Transactions">
+				<db:sql ><![CDATA[insert into emp_transaction_table2(emp_id, emp_location, emp_designation) values (:emp_id, :emp_location, :emp_designation)]]></db:sql>
+				<db:input-parameters ><![CDATA[#[{
+	emp_id: payload.emp_id,
+	emp_location: payload.emp_location,
+	emp_designation: payload.emp_designation
+}]]]></db:input-parameters>
+			</db:insert>
+			<ee:transform doc:name="Transform Message" doc:id="9dd8c736-6ca0-432d-8d87-8dfb6b599d43">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message": "Success" ++ null
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="c8bab55d-9234-4d24-ab27-f6e50a5bf6c5" message="**Transaction POC end**"/>
+	</flow>
+</mule>
